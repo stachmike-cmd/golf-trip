@@ -1,12 +1,28 @@
 import { useState, useEffect } from "react";
 
 const WEEKENDS = [
-  { id: "may23", label: "May 23–25" },
-  { id: "may30", label: "May 30 – Jun 1" },
-  { id: "jun6",  label: "Jun 6–8" },
-  { id: "jun13", label: "Jun 13–15" },
-  { id: "jun20", label: "Jun 20–22" },
-  { id: "jun27", label: "Jun 27–29" },
+  { id: "may1",  label: "May 1–3" },
+  { id: "may8",  label: "May 8–10" },
+  { id: "may15", label: "May 15–17" },
+  { id: "may22", label: "May 22–24" },
+  { id: "may29", label: "May 29–31" },
+  { id: "jun5",  label: "Jun 5–7" },
+  { id: "jun12", label: "Jun 12–14" },
+  { id: "jun19", label: "Jun 19–21" },
+  { id: "jun26", label: "Jun 26–28" },
+  { id: "jul4",  label: "Jul 4–6" },
+  { id: "jul11", label: "Jul 11–13" },
+  { id: "jul18", label: "Jul 18–20" },
+  { id: "jul25", label: "Jul 25–27" },
+  { id: "aug1",  label: "Aug 1–3" },
+  { id: "aug8",  label: "Aug 8–10" },
+  { id: "aug15", label: "Aug 15–17" },
+  { id: "aug22", label: "Aug 22–24" },
+  { id: "aug29", label: "Aug 29–31" },
+  { id: "sep5",  label: "Sep 5–7" },
+  { id: "sep12", label: "Sep 12–14" },
+  { id: "sep19", label: "Sep 19–21" },
+  { id: "sep26", label: "Sep 26–28" },
 ];
 
 const SUPABASE_URL = "https://ofhvjgrkbkjgkomdhqkg.supabase.co";
@@ -82,13 +98,15 @@ export default function App() {
     setView("home");
   }
 
+  const totalResponses = responses.length;
   const weekendCounts = WEEKENDS.map(w => ({
     ...w,
-    count: responses.filter(r => r.weekends?.split(",").includes(w.id)).length,
-    people: responses.filter(r => r.weekends?.split(",").includes(w.id)).map(r => r.name),
-  })).sort((a, b) => b.count - a.count);
+    conflicts: responses.filter(r => r.weekends?.split(",").includes(w.id)).length,
+    conflictNames: responses.filter(r => r.weekends?.split(",").includes(w.id)).map(r => r.name),
+    available: totalResponses - responses.filter(r => r.weekends?.split(",").includes(w.id)).length,
+  })).sort((a, b) => a.conflicts - b.conflicts);
 
-  const maxCount = weekendCounts[0]?.count || 0;
+  const minConflicts = weekendCounts[0]?.conflicts ?? 0;
 
   return (
     <div style={{
@@ -129,10 +147,10 @@ export default function App() {
         .weekend-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 28px; }
         .weekend-btn { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px 12px; cursor: pointer; transition: all 0.2s; text-align: left; }
         .weekend-btn:hover { border-color: rgba(74,122,58,0.5); background: rgba(74,122,58,0.08); }
-        .weekend-btn.active { border-color: #4a7a3a; background: rgba(74,122,58,0.18); }
+        .weekend-btn.active { border-color: #c0392b; background: rgba(192,57,43,0.15); }
         .weekend-btn .wk-label { font-family: 'Playfair Display', serif; font-size: 15px; color: #f0e8d0; display: block; }
         .weekend-btn .wk-sub { font-family: 'Source Sans 3', sans-serif; font-size: 11px; color: #6a8a5a; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; display: block; }
-        .weekend-btn.active .wk-sub { color: #8aaa7a; }
+        .weekend-btn.active .wk-sub { color: #e07060; }
         .check-icon { float: right; font-size: 16px; margin-top: -2px; }
         .results-bar-row { margin-bottom: 14px; }
         .results-bar-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
@@ -159,8 +177,8 @@ export default function App() {
         <div className="flag-banner">
           <div className="flag-icon">⛳</div>
           <div className="title-block">
-            <h1>The Golf Trip</h1>
-            <p>Summer 2025 · Ryder Cup Format</p>
+            <h1>2026 Golf Trip</h1>
+            <p>Summer 2026 · Ryder Cup Format</p>
           </div>
         </div>
 
@@ -169,8 +187,8 @@ export default function App() {
 
         ) : view === "home" ? (
           <div className="hero-card">
-            <h2>We're making this happen.</h2>
-            <p>2 teams of 6. 4 rounds. Friday through Sunday somewhere in Jersey, PA, or Westchester. First half of summer means we need to move. Mark your weekends below.</p>
+            <h2>It's happening. We need your dates.</h2>
+            <p>Ryder Cup format. 2 teams of 6. 4 rounds over a Friday–Sunday weekend. Location and date TBD — that's what we're figuring out now. Click below, enter your name and handicap, and mark any weekends you <em>cannot</em> make. We'll find the overlap.</p>
             <div className="details-row">
               {[["Format","Ryder Cup"],["Teams","2 × 6"],["Rounds","4"],["Responses",`${responses.length} / 12`]].map(([l,v]) => (
                 <div className="detail-item" key={l}>
@@ -193,20 +211,20 @@ export default function App() {
             <div className="form-section">
               <label>Your Name</label>
               <input className="form-input" placeholder="First name is fine" value={name} onChange={e => setName(e.target.value)} />
-              <label>Handicap (optional)</label>
+              <label>Handicap</label>
               <input className="form-input" placeholder="e.g. 14" value={handicap} onChange={e => setHandicap(e.target.value)} />
-              <label>Weekends You Can Make</label>
+              <label>Weekends You CANNOT Make — tap to mark conflicts</label>
               <div className="weekend-grid">
                 {WEEKENDS.map(w => (
                   <button key={w.id} className={`weekend-btn ${selected[w.id] ? "active" : ""}`} onClick={() => toggleWeekend(w.id)}>
-                    {selected[w.id] && <span className="check-icon">✓</span>}
+                    {selected[w.id] && <span className="check-icon">✗</span>}
                     <span className="wk-label">{w.label}</span>
-                    <span className="wk-sub">Friday–Sunday</span>
+                    <span className="wk-sub">{selected[w.id] ? "Conflict" : "Friday–Sunday"}</span>
                   </button>
                 ))}
               </div>
               <button className="btn-primary" onClick={saveResponse}
-                disabled={!name.trim() || submitting || Object.values(selected).filter(Boolean).length === 0}>
+                disabled={!name.trim() || !handicap.trim() || submitting}>
                 {submitting ? "Saving..." : "Submit Availability"}
               </button>
             </div>
@@ -217,7 +235,7 @@ export default function App() {
             <div className="success-icon">🏌️</div>
             <h2>You're in.</h2>
             <p>
-              {Object.values(selected).filter(Boolean).length} weekend{Object.values(selected).filter(Boolean).length !== 1 ? "s" : ""} marked.
+              {Object.values(selected).filter(Boolean).length} conflict{Object.values(selected).filter(Boolean).length !== 1 ? "s" : ""} marked.
               {responses.length < 12 ? ` Still waiting on ${12 - responses.length} more.` : " Full squad."}
             </p>
             <button className="btn-primary" onClick={() => setView("results")}>See the Results</button>
@@ -236,15 +254,17 @@ export default function App() {
                 <div className="results-bar-header">
                   <span className="wknd-name">
                     {w.label}
-                    {w.count === maxCount && maxCount > 0 && <span className="best-badge">Best</span>}
+                    {w.conflicts === minConflicts && totalResponses > 0 && <span className="best-badge">Best</span>}
                   </span>
-                  <span className="wknd-count">{w.count} available</span>
+                  <span className="wknd-count">
+                    {totalResponses > 0 ? `${w.available} / ${totalResponses} available` : "No responses yet"}
+                  </span>
                 </div>
                 <div className="bar-track">
-                  <div className={`bar-fill ${w.count === maxCount && maxCount > 0 ? "best" : w.count > maxCount * 0.5 ? "good" : "low"}`}
-                    style={{ width: maxCount > 0 ? `${(w.count / 12) * 100}%` : "0%" }} />
+                  <div className={`bar-fill ${w.conflicts === minConflicts && totalResponses > 0 ? "best" : w.conflicts <= 2 ? "good" : "low"}`}
+                    style={{ width: totalResponses > 0 ? `${(w.available / totalResponses) * 100}%` : "0%" }} />
                 </div>
-                <div className="name-list">{w.people.length > 0 ? w.people.join(", ") : "No responses yet"}</div>
+                <div className="name-list">{w.conflictNames.length > 0 ? `Conflicts: ${w.conflictNames.join(", ")}` : totalResponses > 0 ? "No conflicts" : ""}</div>
               </div>
             ))}
             <div className="divider" />
@@ -264,6 +284,10 @@ export default function App() {
             </div>
           </>
         ) : null}
+      </div>
+    </div>
+  );
+}
       </div>
     </div>
   );
