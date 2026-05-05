@@ -1,15 +1,6 @@
 import { useState, useEffect } from "react";
 
 const WEEKENDS = [
-  { id: "may1",  label: "May 1–3" },
-  { id: "may8",  label: "May 8–10" },
-  { id: "may15", label: "May 15–17" },
-  { id: "may22", label: "May 22–24" },
-  { id: "may29", label: "May 29–31" },
-  { id: "jun5",  label: "Jun 5–7" },
-  { id: "jun12", label: "Jun 12–14" },
-  { id: "jun19", label: "Jun 19–21" },
-  { id: "jun26", label: "Jun 26–28" },
   { id: "jul4",  label: "Jul 4–6" },
   { id: "jul11", label: "Jul 11–13" },
   { id: "jul18", label: "Jul 18–20" },
@@ -24,6 +15,13 @@ const WEEKENDS = [
   { id: "sep19", label: "Sep 19–21" },
   { id: "sep26", label: "Sep 26–28" },
 ];
+
+const PAR = 72;
+
+function deriveHandicap(best, avg, worst) {
+  const weighted = (best * 0.25) + (avg * 0.50) + (worst * 0.25);
+  return Math.round(weighted - PAR);
+}
 
 const SUPABASE_URL = "https://ofhvjgrkbkjgkomdhqkg.supabase.co";
 const SUPABASE_KEY = "sb_publishable_1uja284ixi8NUYls4OEAxg_oAMlhkPn";
@@ -58,7 +56,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   const [name, setName] = useState("");
-  const [handicap, setHandicap] = useState("");
+  const [bestScore, setBestScore] = useState("");
+  const [avgScore, setAvgScore] = useState("");
+  const [worstScore, setWorstScore] = useState("");
   const [selected, setSelected] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -71,12 +71,14 @@ export default function App() {
   }, []);
 
   async function saveResponse() {
-    if (!name.trim()) return;
+    if (!name.trim() || !bestScore || !avgScore || !worstScore) return;
     setSubmitting(true);
     try {
       await upsertResponse({
         name: name.trim(),
-        handicap: handicap.trim() || null,
+        best_score: parseInt(bestScore),
+        avg_score: parseInt(avgScore),
+        worst_score: parseInt(worstScore),
         weekends: Object.keys(selected).filter(k => selected[k]).join(","),
         submitted_at: Date.now(),
       });
@@ -94,7 +96,8 @@ export default function App() {
   }
 
   function resetForm() {
-    setName(""); setHandicap(""); setSelected({}); setSubmitted(false);
+    setName(""); setBestScore(""); setAvgScore(""); setWorstScore("");
+    setSelected({}); setSubmitted(false);
     setView("home");
   }
 
@@ -107,6 +110,10 @@ export default function App() {
   })).sort((a, b) => a.conflicts - b.conflicts);
 
   const minConflicts = weekendCounts[0]?.conflicts ?? 0;
+
+  const formValid = name.trim() && bestScore && avgScore && worstScore &&
+    parseInt(bestScore) <= parseInt(avgScore) &&
+    parseInt(avgScore) <= parseInt(worstScore);
 
   return (
     <div style={{
@@ -130,7 +137,8 @@ export default function App() {
         .divider { height: 1px; background: linear-gradient(90deg, transparent, #3a5a2a, transparent); margin: 32px 0; }
         .hero-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 32px; text-align: center; }
         .hero-card h2 { font-family: 'Playfair Display', serif; font-size: 22px; color: #f0e8d0; margin-bottom: 10px; }
-        .hero-card p { font-family: 'Source Sans 3', sans-serif; font-size: 14px; color: #9aaa8a; line-height: 1.7; margin-bottom: 28px; font-weight: 300; }
+        .hero-card p { font-family: 'Source Sans 3', sans-serif; font-size: 14px; color: #9aaa8a; line-height: 1.7; margin-bottom: 20px; font-weight: 300; }
+        .hero-card em { color: #c4b898; font-style: italic; }
         .details-row { display: flex; justify-content: center; gap: 28px; margin-bottom: 28px; flex-wrap: wrap; }
         .detail-item { text-align: center; }
         .detail-item .label { font-family: 'Source Sans 3', sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #6a8a5a; margin-bottom: 4px; }
@@ -144,6 +152,12 @@ export default function App() {
         .form-input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 12px 14px; font-family: 'Source Sans 3', sans-serif; font-size: 15px; color: #f0e8d0; outline: none; transition: border-color 0.2s; margin-bottom: 20px; }
         .form-input:focus { border-color: #4a7a3a; }
         .form-input::placeholder { color: #4a5a3a; }
+        .score-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .score-group label { display: block; font-family: 'Source Sans 3', sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #7a9a6a; margin-bottom: 8px; }
+        .score-group input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 12px 14px; font-family: 'Source Sans 3', sans-serif; font-size: 15px; color: #f0e8d0; outline: none; transition: border-color 0.2s; }
+        .score-group input:focus { border-color: #4a7a3a; }
+        .score-group input::placeholder { color: #4a5a3a; }
+        .score-hint { font-family: 'Source Sans 3', sans-serif; font-size: 11px; color: #5a7a4a; margin-bottom: 24px; line-height: 1.5; }
         .weekend-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 28px; }
         .weekend-btn { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px 12px; cursor: pointer; transition: all 0.2s; text-align: left; }
         .weekend-btn:hover { border-color: rgba(74,122,58,0.5); background: rgba(74,122,58,0.08); }
@@ -151,11 +165,8 @@ export default function App() {
         .weekend-btn .wk-label { font-family: 'Playfair Display', serif; font-size: 15px; color: #f0e8d0; display: block; }
         .weekend-btn .wk-sub { font-family: 'Source Sans 3', sans-serif; font-size: 11px; color: #6a8a5a; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; display: block; }
         .weekend-btn.active .wk-sub { color: #e07060; }
-        .check-icon { float: right; font-size: 16px; margin-top: -2px; }
         .results-bar-row { margin-bottom: 14px; }
         .results-bar-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-        .results-bar-header .wknd-name { font-family: 'Playfair Display', serif; font-size: 16px; color: #f0e8d0; }
-        .results-bar-header .wknd-count { font-family: 'Source Sans 3', sans-serif; font-size: 12px; color: #7a9a6a; letter-spacing: 1px; }
         .bar-track { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
         .bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
         .bar-fill.best { background: #6ab04a; }
@@ -171,6 +182,10 @@ export default function App() {
         .nav-link:hover { color: #9aaa8a; }
         .best-badge { display: inline-block; background: rgba(106,176,74,0.2); border: 1px solid rgba(106,176,74,0.4); color: #8aca6a; font-family: 'Source Sans 3', sans-serif; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; margin-left: 8px; vertical-align: middle; }
         .loading { text-align: center; padding: 60px 0; font-family: 'Source Sans 3', sans-serif; font-size: 13px; color: #4a6a3a; letter-spacing: 2px; text-transform: uppercase; }
+        .player-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .player-name { font-family: 'Playfair Display', serif; font-size: 15px; color: #f0e8d0; }
+        .player-hcp { font-family: 'Source Sans 3', sans-serif; font-size: 13px; color: #8aaa7a; font-weight: 600; }
+        .player-scores { font-family: 'Source Sans 3', sans-serif; font-size: 11px; color: #5a7a4a; margin-top: 2px; }
       `}</style>
 
       <div className="app-container">
@@ -187,8 +202,9 @@ export default function App() {
 
         ) : view === "home" ? (
           <div className="hero-card">
-            <h2>It's happening. We need your dates.</h2>
-            <p>Ryder Cup format. 2 teams of 6. 4 rounds over a Friday–Sunday weekend. Location and date TBD — that's what we're figuring out now. Click below, enter your name and handicap, and mark any weekends you <em>cannot</em> make. We'll find the overlap.</p>
+            <h2>It's happening. We need your info.</h2>
+            <p>Ryder Cup format. 2 teams of 6. 4 rounds over a Friday–Sunday weekend somewhere in NJ. Date TBD — that's what we're figuring out now.</p>
+            <p style={{ marginBottom: 28 }}>Click below and fill out two things: <em>your scoring range</em> (best, average, and worst round you'd realistically shoot) and <em>any weekends you cannot make</em>. We'll calculate handicaps from your scores and find the best weekend from there. No sandbagging.</p>
             <div className="details-row">
               {[["Format","Ryder Cup"],["Teams","2 × 6"],["Rounds","4"],["Responses",`${responses.length} / 12`]].map(([l,v]) => (
                 <div className="detail-item" key={l}>
@@ -197,7 +213,7 @@ export default function App() {
                 </div>
               ))}
             </div>
-            <button className="btn-primary" onClick={() => setView("form")}>Mark My Availability →</button>
+            <button className="btn-primary" onClick={() => setView("form")}>Submit My Info →</button>
             {responses.length > 0 && (
               <button className="btn-secondary" onClick={() => setView("results")}>View Results</button>
             )}
@@ -211,21 +227,36 @@ export default function App() {
             <div className="form-section">
               <label>Your Name</label>
               <input className="form-input" placeholder="First name is fine" value={name} onChange={e => setName(e.target.value)} />
-              <label>Handicap</label>
-              <input className="form-input" placeholder="e.g. 14" value={handicap} onChange={e => setHandicap(e.target.value)} />
+
+              <label style={{ marginBottom: 4 }}>Your Scoring Range</label>
+              <div className="score-hint">Enter realistic scores — best round you could have, your typical round, and a rough day. This is how we'll set handicaps. Be honest.</div>
+              <div className="score-row">
+                <div className="score-group">
+                  <label>Best</label>
+                  <input type="number" placeholder="e.g. 88" value={bestScore} onChange={e => setBestScore(e.target.value)} />
+                </div>
+                <div className="score-group">
+                  <label>Average</label>
+                  <input type="number" placeholder="e.g. 95" value={avgScore} onChange={e => setAvgScore(e.target.value)} />
+                </div>
+                <div className="score-group">
+                  <label>Worst</label>
+                  <input type="number" placeholder="e.g. 104" value={worstScore} onChange={e => setWorstScore(e.target.value)} />
+                </div>
+              </div>
+
               <label>Weekends You CANNOT Make — tap to mark conflicts</label>
-              <div className="weekend-grid">
+              <div className="weekend-grid" style={{ marginTop: 8 }}>
                 {WEEKENDS.map(w => (
                   <button key={w.id} className={`weekend-btn ${selected[w.id] ? "active" : ""}`} onClick={() => toggleWeekend(w.id)}>
-                    {selected[w.id] && <span className="check-icon">✗</span>}
+                    {selected[w.id] && <span style={{ float: "right", fontSize: 16 }}>✗</span>}
                     <span className="wk-label">{w.label}</span>
                     <span className="wk-sub">{selected[w.id] ? "Conflict" : "Friday–Sunday"}</span>
                   </button>
                 ))}
               </div>
-              <button className="btn-primary" onClick={saveResponse}
-                disabled={!name.trim() || !handicap.trim() || submitting}>
-                {submitting ? "Saving..." : "Submit Availability"}
+              <button className="btn-primary" onClick={saveResponse} disabled={!formValid || submitting}>
+                {submitting ? "Saving..." : "Submit"}
               </button>
             </div>
           </>
@@ -246,17 +277,20 @@ export default function App() {
           <>
             <div style={{ marginBottom: 24 }}>
               <span className="nav-link" onClick={() => setView("home")}>← Home</span>
-              <span className="nav-link" onClick={() => { setSubmitted(false); setView("form"); }}>Edit My Picks</span>
+              <span className="nav-link" onClick={() => { setSubmitted(false); setView("form"); }}>Edit My Info</span>
             </div>
+
             <div className="response-count">● {responses.length} of 12 responded</div>
+
+            <div style={{ fontFamily: "'Source Sans 3', sans-serif", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#5a7a4a", marginBottom: 12 }}>Weekend Availability</div>
             {weekendCounts.map(w => (
               <div className="results-bar-row" key={w.id}>
                 <div className="results-bar-header">
-                  <span className="wknd-name">
+                  <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 16, color: "#f0e8d0" }}>
                     {w.label}
                     {w.conflicts === minConflicts && totalResponses > 0 && <span className="best-badge">Best</span>}
                   </span>
-                  <span className="wknd-count">
+                  <span style={{ fontFamily: "'Source Sans 3', sans-serif", fontSize: 12, color: "#7a9a6a", letterSpacing: 1 }}>
                     {totalResponses > 0 ? `${w.available} / ${totalResponses} available` : "No responses yet"}
                   </span>
                 </div>
@@ -267,21 +301,29 @@ export default function App() {
                 <div className="name-list">{w.conflictNames.length > 0 ? `Conflicts: ${w.conflictNames.join(", ")}` : totalResponses > 0 ? "No conflicts" : ""}</div>
               </div>
             ))}
+
             <div className="divider" />
-            <div style={{ marginTop: 8 }}>
-              <div style={{ fontFamily: "'Source Sans 3', sans-serif", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#5a7a4a", marginBottom: 12 }}>Who's In</div>
-              {responses.length === 0 ? (
-                <div style={{ color: "#4a6a3a", fontFamily: "'Source Sans 3', sans-serif", fontSize: 14 }}>No responses yet.</div>
-              ) : (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {responses.map(r => (
-                    <div key={r.name} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: "6px 12px", fontFamily: "'Source Sans 3', sans-serif", fontSize: 13, color: "#c4b898" }}>
-                      {r.name}{r.handicap ? ` · ${r.handicap}` : ""}
+
+            <div style={{ fontFamily: "'Source Sans 3', sans-serif", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#5a7a4a", marginBottom: 12 }}>Players & Derived Handicaps</div>
+            {responses.length === 0 ? (
+              <div style={{ color: "#4a6a3a", fontFamily: "'Source Sans 3', sans-serif", fontSize: 14 }}>No responses yet.</div>
+            ) : (
+              [...responses]
+                .filter(r => r.best_score && r.avg_score && r.worst_score)
+                .sort((a, b) => deriveHandicap(a.best_score, a.avg_score, a.worst_score) - deriveHandicap(b.best_score, b.avg_score, b.worst_score))
+                .map(r => {
+                  const hcp = deriveHandicap(r.best_score, r.avg_score, r.worst_score);
+                  return (
+                    <div className="player-card" key={r.name}>
+                      <div>
+                        <div className="player-name">{r.name}</div>
+                        <div className="player-scores">Best {r.best_score} · Avg {r.avg_score} · Worst {r.worst_score}</div>
+                      </div>
+                      <div className="player-hcp">{hcp} hdcp</div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  );
+                })
+            )}
           </>
         ) : null}
       </div>
