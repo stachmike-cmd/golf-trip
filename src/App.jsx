@@ -17,6 +17,7 @@ const WEEKENDS = [
 ];
 
 const PAR = 72;
+const CUTOFF = new Date("2026-05-06T10:00:00-04:00");
 
 function deriveHandicap(best, avg, worst) {
   const weighted = (best * 0.25) + (avg * 0.50) + (worst * 0.25);
@@ -63,6 +64,8 @@ export default function App() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const isClosed = new Date() > CUTOFF;
+
   useEffect(() => {
     fetchResponses().then(r => {
       setResponses(r);
@@ -71,7 +74,7 @@ export default function App() {
   }, []);
 
   async function saveResponse() {
-    if (!name.trim() || !bestScore || !avgScore || !worstScore) return;
+    if (!name.trim() || !bestScore || !avgScore || !worstScore || isClosed) return;
     setSubmitting(true);
     try {
       await upsertResponse({
@@ -165,6 +168,7 @@ export default function App() {
         .weekend-btn .wk-label { font-family: 'Playfair Display', serif; font-size: 15px; color: #f0e8d0; display: block; }
         .weekend-btn .wk-sub { font-family: 'Source Sans 3', sans-serif; font-size: 11px; color: #6a8a5a; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; display: block; }
         .weekend-btn.active .wk-sub { color: #e07060; }
+        .closed-banner { background: rgba(192,57,43,0.15); border: 1px solid #c0392b; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; font-family: 'Source Sans 3', sans-serif; font-size: 14px; color: #e07060; text-align: center; }
         .results-bar-row { margin-bottom: 14px; }
         .results-bar-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
         .bar-track { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
@@ -205,6 +209,7 @@ export default function App() {
             <h2>It's happening. We need your info.</h2>
             <p>Ryder Cup format. 2 teams of 6. 4 rounds over a Friday–Sunday weekend somewhere in NJ. Date TBD — that's what we're figuring out now.</p>
             <p style={{ marginBottom: 28 }}>Click below and fill out two things: <em>your scoring range</em> (best, average, and worst round you'd realistically shoot) and <em>any weekends you cannot make</em>. We'll calculate handicaps from your scores and find the best weekend from there. No sandbagging.</p>
+            {isClosed && <div className="closed-banner">⛔ Submissions closed as of 10:00 AM — results are final.</div>}
             <div className="details-row">
               {[["Format","Ryder Cup"],["Teams","2 × 6"],["Rounds","4"],["Responses",`${responses.length} / 12`]].map(([l,v]) => (
                 <div className="detail-item" key={l}>
@@ -213,7 +218,7 @@ export default function App() {
                 </div>
               ))}
             </div>
-            <button className="btn-primary" onClick={() => setView("form")}>Submit My Info →</button>
+            {!isClosed && <button className="btn-primary" onClick={() => setView("form")}>Submit My Info →</button>}
             {responses.length > 0 && (
               <button className="btn-secondary" onClick={() => setView("results")}>View Results</button>
             )}
@@ -224,41 +229,45 @@ export default function App() {
             <div style={{ marginBottom: 24 }}>
               <span className="nav-link" onClick={() => setView("home")}>← Back</span>
             </div>
-            <div className="form-section">
-              <label>Your Name</label>
-              <input className="form-input" placeholder="First name is fine" value={name} onChange={e => setName(e.target.value)} />
+            {isClosed ? (
+              <div className="closed-banner">⛔ Submissions are closed. The deadline has passed.</div>
+            ) : (
+              <div className="form-section">
+                <label>Your Name</label>
+                <input className="form-input" placeholder="First name is fine" value={name} onChange={e => setName(e.target.value)} />
 
-              <label style={{ marginBottom: 4 }}>Your Scoring Range</label>
-              <div className="score-hint">Enter realistic scores — best round you could have, your typical round, and a rough day. This is how we'll set handicaps. Be honest.</div>
-              <div className="score-row">
-                <div className="score-group">
-                  <label>Best</label>
-                  <input type="number" placeholder="e.g. 88" value={bestScore} onChange={e => setBestScore(e.target.value)} />
+                <label style={{ marginBottom: 4 }}>Your Scoring Range</label>
+                <div className="score-hint">Enter realistic scores — best round you could have, your typical round, and a rough day. This is how we'll set handicaps. Be honest.</div>
+                <div className="score-row">
+                  <div className="score-group">
+                    <label>Best</label>
+                    <input type="number" placeholder="e.g. 88" value={bestScore} onChange={e => setBestScore(e.target.value)} />
+                  </div>
+                  <div className="score-group">
+                    <label>Average</label>
+                    <input type="number" placeholder="e.g. 95" value={avgScore} onChange={e => setAvgScore(e.target.value)} />
+                  </div>
+                  <div className="score-group">
+                    <label>Worst</label>
+                    <input type="number" placeholder="e.g. 104" value={worstScore} onChange={e => setWorstScore(e.target.value)} />
+                  </div>
                 </div>
-                <div className="score-group">
-                  <label>Average</label>
-                  <input type="number" placeholder="e.g. 95" value={avgScore} onChange={e => setAvgScore(e.target.value)} />
-                </div>
-                <div className="score-group">
-                  <label>Worst</label>
-                  <input type="number" placeholder="e.g. 104" value={worstScore} onChange={e => setWorstScore(e.target.value)} />
-                </div>
-              </div>
 
-              <label>Weekends You CANNOT Make — tap to mark conflicts</label>
-              <div className="weekend-grid" style={{ marginTop: 8 }}>
-                {WEEKENDS.map(w => (
-                  <button key={w.id} className={`weekend-btn ${selected[w.id] ? "active" : ""}`} onClick={() => toggleWeekend(w.id)}>
-                    {selected[w.id] && <span style={{ float: "right", fontSize: 16 }}>✗</span>}
-                    <span className="wk-label">{w.label}</span>
-                    <span className="wk-sub">{selected[w.id] ? "Conflict" : "Friday–Sunday"}</span>
-                  </button>
-                ))}
+                <label>Weekends You CANNOT Make — tap to mark conflicts</label>
+                <div className="weekend-grid" style={{ marginTop: 8 }}>
+                  {WEEKENDS.map(w => (
+                    <button key={w.id} className={`weekend-btn ${selected[w.id] ? "active" : ""}`} onClick={() => toggleWeekend(w.id)}>
+                      {selected[w.id] && <span style={{ float: "right", fontSize: 16 }}>✗</span>}
+                      <span className="wk-label">{w.label}</span>
+                      <span className="wk-sub">{selected[w.id] ? "Conflict" : "Friday–Sunday"}</span>
+                    </button>
+                  ))}
+                </div>
+                <button className="btn-primary" onClick={saveResponse} disabled={!formValid || submitting}>
+                  {submitting ? "Saving..." : "Submit"}
+                </button>
               </div>
-              <button className="btn-primary" onClick={saveResponse} disabled={!formValid || submitting}>
-                {submitting ? "Saving..." : "Submit"}
-              </button>
-            </div>
+            )}
           </>
 
         ) : view === "form" && submitted ? (
@@ -277,7 +286,6 @@ export default function App() {
           <>
             <div style={{ marginBottom: 24 }}>
               <span className="nav-link" onClick={() => setView("home")}>← Home</span>
-              <span className="nav-link" onClick={() => { setSubmitted(false); setView("form"); }}>Edit My Info</span>
             </div>
 
             <div className="response-count">● {responses.length} of 12 responded</div>
